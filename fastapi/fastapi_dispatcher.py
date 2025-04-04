@@ -21,9 +21,9 @@ class FastApiDispatcher(Dispatcher):
         # don't parse the httprequest let starlette parse the stream
         self.request.params = {}  # dict(self.request.get_http_params(), **args)
         environ = self._get_environ()
-        root_path = "/" + environ["PATH_INFO"].split("/")[1]
-        # TODO store the env into contextvar to be used by the odoo_env
-        # depends method
+        full_path = environ["PATH_INFO"]
+        root_path = "/".join(full_path.split("/")[:-1])
+
         fastapi_endpoint = self.request.env["fastapi.endpoint"].sudo()
         app = fastapi_endpoint.get_app(root_path)
         uid = fastapi_endpoint.get_uid(root_path)
@@ -105,9 +105,15 @@ class FastApiDispatcher(Dispatcher):
             )
             if lang:
                 env = env(context=dict(context, lang=lang))
+
+        # add tz in the context
+        tz = request.httprequest.headers.get("X-Timezone")
+        if tz:
+            env = env(context=dict(context, tz=tz))
         if uid:
             env = env(user=uid)
         token = odoo_env_ctx.set(env)
+
         try:
             yield
         finally:
