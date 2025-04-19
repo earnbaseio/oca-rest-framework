@@ -22,13 +22,15 @@ class FastApiDispatcher(Dispatcher):
         self.request.params = {}  # dict(self.request.get_http_params(), **args)
         environ = self._get_environ()
         full_path = environ["PATH_INFO"]
-        
-        # Xử lý đặc biệt cho đường dẫn /api/v1/public/*
-        if full_path.startswith("/api/v1/public/"):
-            root_path = "/api/v1"
-        else:
-            root_path = "/".join(full_path.split("/")[:-1])
-        
+
+        # Xử lý đặc biệt cho đường dẫn /api/v1/public/* và /api/v1/files/*
+        # if full_path.startswith("/api/v1/public/") or full_path.startswith("/api/v1/files/"):
+        #     root_path = "/api/v1"
+        # else:
+        #     root_path = "/".join(full_path.split("/")[:-1])
+
+        root_path = "/api/v1"
+
         # Thêm log để debug
         import logging
         _logger = logging.getLogger(__name__)
@@ -36,23 +38,23 @@ class FastApiDispatcher(Dispatcher):
         _logger.info(f"[FastAPI Debug] Root path: {root_path}")
 
         fastapi_endpoint = self.request.env["fastapi.endpoint"].sudo()
-        
+
         # Log các endpoint đã đăng ký
         endpoints = fastapi_endpoint.search([])
         _logger.info(f"[FastAPI Debug] Registered endpoints: {len(endpoints)}")
         for ep in endpoints:
             _logger.info(f"[FastAPI Debug] Endpoint: ID={ep.id}, Name={ep.name}, Root Path={ep.root_path}, App={ep.app}")
-        
+
         app = fastapi_endpoint.get_app(root_path)
         _logger.info(f"[FastAPI Debug] App for {root_path}: {app is not None}")
-        
+
         uid = fastapi_endpoint.get_uid(root_path)
         _logger.info(f"[FastAPI Debug] UID for {root_path}: {uid}")
-        
+
         if app is None:
             _logger.error(f"[FastAPI Debug] App is None for root_path: {root_path}")
             raise Exception(f"No FastAPI app found for path: {root_path}")
-            
+
         data = BytesIO()
         with self._manage_odoo_env(uid):
             try:
